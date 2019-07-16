@@ -76,20 +76,18 @@ def main():
     # Open a connection
     conn = ldap_connector()
 
-    # Add new ad user
-    new_employee, attrs, employee_full_adname = get_ad_user_info(dc)
+    # Check if ad user exists
     if not conn.search(dc, '(&(objectCategory=person)'
     F'(sAMAccountName={employee_full_adname}))'):
+        # Add new ad user
         conn.add(new_employee, attributes=attrs)
+        # Update new ad user password
+        conn.extend.microsoft.modify_password(new_employee, 'password')
+        # Enable new ad user account
+        conn.modify(new_employee,
+                    {'userAccountControl': [('MODIFY_REPLACE', 512)]})
     else:
         print('Employee already exists in Active Directory')
-
-    # Update user password
-    conn.extend.microsoft.modify_password(new_employee, 'new.user1')
-
-    # Enable new ad user account
-    conn.modify(new_employee,
-                {'userAccountControl': [('MODIFY_REPLACE', 512)]})
 
 
 if __name__ == '__main__':
