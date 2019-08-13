@@ -16,14 +16,13 @@ def set_ad_server_info(ad_username, ad_password):
     """
 
     # Set domain server
-    server = Server('ldaps://hostname.dc.dc', port=636, use_ssl=True,
-                    get_info=ALL)
+    server = Server("ldaps://hostname.dc.dc", port=636, use_ssl=True, get_info=ALL)
 
     # Set DC
-    dc = 'cn=Users,dc=hostname,dc=dc,dc=dc'
+    dc = "cn=Users,dc=hostname,dc=dc,dc=dc"
 
     # Set domain user info
-    domain_user = F'cn={ad_username}' + ',' + dc
+    domain_user = f"cn={ad_username}" + "," + dc
     password = ad_password
 
     return server, domain_user, password, dc
@@ -35,9 +34,8 @@ def save_domain_username(username):
     :param username: Passed in via CLI
     """
 
-    username_template = F"""username='{username}'\n"""
-    with os.fdopen(os.open('ad_info.py', os.O_WRONLY | os.O_CREAT, 0o600),
-                   'w') as F:
+    username_template = f"""username='{username}'\n"""
+    with os.fdopen(os.open("ad_info.py", os.O_WRONLY | os.O_CREAT, 0o600), "w") as F:
         F.write(username_template)
 
 
@@ -55,12 +53,10 @@ def get_ad_user_info(dc, temp):
         "Who is the new employee's manager? (format " "First Last): "
     ).lower()
     employee_title = input("What is the new employee's job title? ").title()
-    employee_department = input(
-        "What is the new employee's department? " "").title()
-    
+    employee_department = input("What is the new employee's department? " "").title()
+
     # Parse new AD user information
-    employee_manager = "cn=" + employee_manager_name.replace(" ",
-                                                             ".") + "," "" + dc
+    employee_manager = "cn=" + employee_manager_name.replace(" ", ".") + "," "" + dc
     employee_name = employee_full_name.split(" ")
     employee_first_name = employee_name[0]
     employee_last_name = employee_name[1]
@@ -68,7 +64,7 @@ def get_ad_user_info(dc, temp):
     employee_last_adname = re.sub("\W", "", employee_last_name.lower())
     if temp is True:
         employee_full_adname = (
-                employee_first_adname + "." + employee_last_adname + ".temp"
+            employee_first_adname + "." + employee_last_adname + ".temp"
         )
     else:
         employee_full_adname = employee_first_adname + "." + employee_last_adname
@@ -106,8 +102,8 @@ def main():
         required=False,
         type=str,
         help="Username of AD domain admin in the format "
-             "fist.last. Mandatory on first run, optional "
-             "after if -ru/--remember flag is used.",
+        "fist.last. Mandatory on first run, optional "
+        "after if -ru/--remember flag is used.",
     )
     parser.add_argument(
         "-pw",
@@ -141,11 +137,9 @@ def main():
         args.username = ad_info.username
 
     # Set up connector
-    server, domain_user, password, dc = set_ad_server_info(args.username,
-                                                           args.password)
+    server, domain_user, password, dc = set_ad_server_info(args.username, args.password)
     ldap_connector = lambda: Connection(
-        server, domain_user, password, return_empty_attributes=True,
-        auto_bind=True
+        server, domain_user, password, return_empty_attributes=True, auto_bind=True
     )
 
     # Open a connection
@@ -156,20 +150,26 @@ def main():
 
     # Check if ad user exists
     if not conn.search(
-            dc,
-            "(&(objectCategory=person)" f"(sAMAccountName={employee_full_adname}))"
+        dc, "(&(objectCategory=person)" f"(sAMAccountName={employee_full_adname}))"
     ):
         # Add new ad user
         conn.add(new_employee, attributes=attrs)
         # Set new ad user password
         conn.extend.microsoft.modify_password(new_employee, "new.user1")
         # Enable new ad user account
-        conn.modify(new_employee,
-                    {"userAccountControl": [("MODIFY_REPLACE", 512)]})
+        conn.modify(new_employee, {"userAccountControl": [("MODIFY_REPLACE", 512)]})
         # Force password reset on next login
         conn.modify(new_employee, {"pwdLastSet": [("MODIFY_REPLACE", 0)]})
     else:
         print("Employee already exists in Active Directory")
+
+    # Verify ad user account was created
+    if conn.search(
+        dc, "(&(objectCategory=person)" f"(sAMAccountName={employee_full_adname}))"
+    ):
+        print(f"{employee_full_adname} was successfully created in AD.")
+    else:
+        print(f"Error while creating {employee_full_adname} in AD.")
 
 
 if __name__ == "__main__":
